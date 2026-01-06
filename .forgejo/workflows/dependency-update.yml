@@ -23,7 +23,7 @@ on:
         default: false
 
 env:
-  FORGEJO_URL: ${{ vars.FORGEJO_URL || 'https://forgejo.example' }}
+  FORGEJO_URL: ${{ vars.FORGEJO_URL || 'http://platform-vm:9001' }}
   GRAFT_ORG: ${{ vars.GRAFT_ORG || 'daniel' }}
 
 jobs:
@@ -36,13 +36,15 @@ jobs:
       - name: Install dependencies
         run: |
           # Install yq for YAML parsing
-          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          chmod +x /usr/local/bin/yq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
 
           # Verify installations
+          echo "Installed tools:"
           yq --version
           jq --version
           git --version
+          curl --version
 
       - name: Make scripts executable
         run: |
@@ -119,6 +121,26 @@ jobs:
           echo "Total updates found:"
           cat updates.json | jq .
 
+      - name: Configure SSH
+        run: |
+          # Set up SSH for git operations
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Add SSH key if provided
+          if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+          fi
+
+          # Add known hosts
+          ssh-keyscan -p 2222 platform-vm >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 644 ~/.ssh/known_hosts
+
+          # Configure git
+          git config --global user.name "graft-ci-bot"
+          git config --global user.email "graft-ci-bot@homelab.local"
+
       - name: Create pull requests
         if: ${{ !inputs.dry_run }}
         env:
@@ -133,10 +155,6 @@ jobs:
             echo "No updates to process"
             exit 0
           fi
-
-          # Configure git for SSH
-          mkdir -p ~/.ssh
-          ssh-keyscan -p 2222 platform-vm >> ~/.ssh/known_hosts 2>/dev/null || true
 
           # Create PRs
           ./src/create-pr.sh updates.json > results.json

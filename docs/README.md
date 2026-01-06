@@ -8,6 +8,11 @@ This KB follows the [meta knowledge base entrypoint](https://forgejo.example/dan
 
 graft-ci implements automated dependency update propagation for the Graft ecosystem. When upstream repositories are updated, this service detects changes and creates pull requests in consuming repositories.
 
+## Quick Start
+
+- [QUICKSTART](../QUICKSTART.md) - Get running in 10 minutes
+- [Workflow Setup](workflow-setup.md) - Forgejo Actions configuration
+
 ## Documentation
 
 - [Setup Guide](setup.md) - Installation and configuration
