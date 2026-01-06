@@ -1,0 +1,27 @@
+# Cache files
+.graph-cache.json
+graph.json
+updates.json
+results.json
+
+# Test files
+test-*.json
+
+# Temporary files
+*.tmp
+*.bak
+
+# Environment files
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
