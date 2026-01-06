@@ -1,0 +1,187 @@
+name: Dependency Update Automation
+
+on:
+  # Push trigger for testing (can be removed after validation)
+  push:
+    branches:
+      - main
+
+  # Webhook trigger for organization push events
+  repository_dispatch:
+    types: [org_push]
+
+  # Scheduled fallback (hourly)
+  schedule:
+    - cron: '0 * * * *'
+
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      upstream_repo:
+        description: 'Upstream repository that was updated'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run mode (no PRs created)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  FORGEJO_URL: ${{ vars.FORGEJO_URL || 'http://platform-vm:9001' }}
+  GRAFT_ORG: ${{ vars.GRAFT_ORG || 'daniel' }}
+
+jobs:
+  dependency-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout graft-ci
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          # Install yq for YAML parsing
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+          # Verify installations
+          echo "Installed tools:"
+          yq --version
+          jq --version
+          git --version
+          curl --version
+
+      - name: Make scripts executable
+        run: |
+          chmod +x src/*.sh
+
+      - name: Build dependency graph
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          echo "Building dependency graph..."
+          ./src/graph-builder.sh > graph.json
+
+          echo "Dependency graph:"
+          cat graph.json | jq .
+
+      - name: Determine upstream repository
+        id: upstream
+        run: |
+          # For repository_dispatch events
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            UPSTREAM_REPO="${{ github.event.client_payload.repository }}"
+            echo "upstream_repo=$UPSTREAM_REPO" >> $GITHUB_OUTPUT
+            echo "Triggered by repository_dispatch: $UPSTREAM_REPO"
+
+          # For workflow_dispatch with upstream_repo input
+          elif [ -n "${{ inputs.upstream_repo }}" ]; then
+            UPSTREAM_REPO="${{ inputs.upstream_repo }}"
+            echo "upstream_repo=$UPSTREAM_REPO" >> $GITHUB_OUTPUT
+            echo "Manual trigger for: $UPSTREAM_REPO"
+
+          # For scheduled runs, check all repositories
+          else
+            echo "upstream_repo=" >> $GITHUB_OUTPUT
+            echo "Scheduled run - checking all repositories"
+          fi
+
+      - name: Check for updates (specific upstream)
+        if: steps.upstream.outputs.upstream_repo != ''
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          UPSTREAM_REPO="${{ steps.upstream.outputs.upstream_repo }}"
+          echo "Checking updates for: $UPSTREAM_REPO"
+
+          ./src/check-updates.sh "$UPSTREAM_REPO" graph.json > updates.json
+
+          echo "Updates found:"
+          cat updates.json | jq .
+
+      - name: Check for updates (all repositories)
+        if: steps.upstream.outputs.upstream_repo == ''
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          echo "Checking all repositories for updates..."
+
+          # Get all upstream repositories from the graph
+          UPSTREAMS=$(cat graph.json | jq -r 'keys[]')
+
+          # Initialize empty updates array
+          echo "[]" > updates.json
+
+          # Check each upstream
+          for upstream in $UPSTREAMS; do
+            echo "Checking $upstream..."
+
+            if ./src/check-updates.sh "$upstream" graph.json > upstream-updates.json 2>/dev/null; then
+              # Merge updates
+              MERGED=$(jq -s '.[0] + .[1]' updates.json upstream-updates.json)
+              echo "$MERGED" > updates.json
+            fi
+          done
+
+          echo "Total updates found:"
+          cat updates.json | jq .
+
+      - name: Configure SSH
+        run: |
+          # Set up SSH for git operations
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Add SSH key if provided
+          if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+          fi
+
+          # Add known hosts
+          ssh-keyscan -p 2222 platform-vm >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 644 ~/.ssh/known_hosts
+
+          # Configure git
+          git config --global user.name "graft-ci-bot"
+          git config --global user.email "graft-ci-bot@homelab.local"
+
+      - name: Create pull requests
+        if: ${{ !inputs.dry_run }}
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          echo "Creating pull requests..."
+
+          UPDATE_COUNT=$(cat updates.json | jq 'length')
+
+          if [ "$UPDATE_COUNT" -eq 0 ]; then
+            echo "No updates to process"
+            exit 0
+          fi
+
+          # Create PRs
+          ./src/create-pr.sh updates.json > results.json
+
+          echo "Results:"
+          cat results.json | jq .
+
+      - name: Dry run summary
+        if: inputs.dry_run
+        run: |
+          echo "DRY RUN MODE - No PRs were created"
+          echo ""
+          echo "Updates that would be created:"
+          cat updates.json | jq -r '.[] | "  - \(.consumer): \(.dep_name) (\(.old_sha[0:8]) → \(.new_sha[0:8]))"'
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-update-results
+          path: |
+            graph.json
+            updates.json
+            results.json
+          retention-days: 30
