@@ -28,17 +28,32 @@ log() {
     echo "[graph-builder] $*" >&2
 }
 
-# Fetch all repositories in organization with pagination
+# Fetch all repositories with pagination (supports both user and org)
 fetch_repos() {
-    local org="$1"
-    log "Fetching repositories for organization: $org"
+    local owner="$1"
+
+    # Try organization endpoint first
+    log "Fetching repositories for: $owner"
+    local url="${FORGEJO_URL}/api/v1/orgs/${owner}/repos?page=1&limit=1"
+    local test_response=$(curl -s -H "Authorization: token $FORGEJO_TOKEN" "$url")
+
+    local is_org=true
+    if echo "$test_response" | jq -e '.message' >/dev/null 2>&1; then
+        log "  Not an organization, trying user endpoint"
+        is_org=false
+    fi
 
     local page=1
     local limit=50
     local all_repos=""
 
     while true; do
-        local url="${FORGEJO_URL}/api/v1/orgs/${org}/repos?page=${page}&limit=${limit}"
+        if [ "$is_org" = true ]; then
+            url="${FORGEJO_URL}/api/v1/orgs/${owner}/repos?page=${page}&limit=${limit}"
+        else
+            url="${FORGEJO_URL}/api/v1/users/${owner}/repos?page=${page}&limit=${limit}"
+        fi
+
         local repos
         repos=$(curl -s -H "Authorization: token $FORGEJO_TOKEN" "$url")
 
