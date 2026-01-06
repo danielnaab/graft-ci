@@ -1,0 +1,34 @@
+apiVersion: kb/v1
+name: graft-ci
+description: "Central CI/CD service for Graft dependency update automation and continuous integration workflows."
+
+entrypoints:
+  human: docs/README.md
+  agent: docs/agents.md
+
+meta:
+  entrypoint: "https://forgejo.example/daniel/meta-knowledge-base/src/branch/main/docs/meta.md"
+
+imports:
+  - kind: git
+    repo: ssh://forgejo@platform-vm:2222/daniel/meta-knowledge-base.git
+    ref: main
+    entrypoint: meta.yaml
+
+paths:
+  docs: docs
+  notes: notes
+
+sources:
+  canonical:
+    - path: docs/specification/**
+      note: "Implementation specifications are canonical for this KB."
+
+rules:
+  lifecycle:
+    statuses: ["draft", "working", "stable", "deprecated"]
+  provenance:
+    requiredFor: ["factual-claims", "operational-guidance"]
+  writes:
+    allow: ["docs/**", "notes/**", "src/**", ".forgejo/**"]
+    deny: ["secrets/**", ".env"]
