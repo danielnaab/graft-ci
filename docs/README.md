@@ -11,6 +11,7 @@ graft-ci implements automated dependency update propagation for the Graft ecosys
 ## Documentation
 
 - [Setup Guide](setup.md) - Installation and configuration
+- [Testing Plan](testing-plan.md) - Progressive testing strategy
 - [Implementation Plan](specification/dependency-update-automation.md) - Core automation implementation
 - [Agent Entrypoint](agents.md) - For automated agents
 - [Domain Configuration](../knowledge-base.yaml) - Knowledge base settings
