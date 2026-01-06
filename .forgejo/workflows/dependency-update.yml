@@ -1,6 +1,11 @@
 name: Dependency Update Automation
 
 on:
+  # Push trigger for testing (can be removed after validation)
+  push:
+    branches:
+      - main
+
   # Webhook trigger for organization push events
   repository_dispatch:
     types: [org_push]
