@@ -28,7 +28,7 @@ on:
         default: false
 
 env:
-  FORGEJO_URL: ${{ vars.FORGEJO_URL || 'http://platform-vm:9001' }}
+  FORGEJO_URL: ${{ vars.FORGEJO_URL || 'http://platform-vm.local/git' }}
   GRAFT_ORG: ${{ vars.GRAFT_ORG || 'daniel' }}
 
 jobs:
