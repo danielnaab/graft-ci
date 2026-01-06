@@ -10,9 +10,11 @@ graft-ci implements automated dependency update propagation for the Graft ecosys
 
 ## Documentation
 
+- [Setup Guide](setup.md) - Installation and configuration
 - [Implementation Plan](specification/dependency-update-automation.md) - Core automation implementation
 - [Agent Entrypoint](agents.md) - For automated agents
 - [Domain Configuration](../knowledge-base.yaml) - Knowledge base settings
+- [Decisions](decisions/decision-0001-shell-script-implementation.md) - Architecture decisions
 
 ## Architecture
 
@@ -31,7 +33,8 @@ The system operates in two modes:
 1. Event-driven: Organization webhooks trigger on repository push events
 2. Scheduled: Periodic polling as fallback for missed events
 
-## References
+## Sources
 
-- [graft-knowledge dependency update specification](https://forgejo.example/daniel/graft-knowledge/src/branch/main/docs/specification/dependency-update-notification.md)
-- [Decision 0006: Dependency Update Events](https://forgejo.example/daniel/graft-knowledge/src/branch/main/docs/decisions/decision-0006-dependency-update-events.md)
+- [graft-knowledge: Dependency Update Notification Specification](https://forgejo.example/daniel/graft-knowledge/src/branch/main/docs/specification/dependency-update-notification.md) - Functional and non-functional requirements
+- [graft-knowledge: Decision 0006 - Dependency Update Events](https://forgejo.example/daniel/graft-knowledge/src/branch/main/docs/decisions/decision-0006-dependency-update-events.md) - Event strategy rationale
+- [meta-knowledge-base](https://forgejo.example/daniel/meta-knowledge-base/src/branch/main/docs/meta.md) - Documentation standards and conventions

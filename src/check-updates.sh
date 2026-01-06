@@ -57,11 +57,23 @@ get_remote_head() {
     git_url="${git_url%#*}"
 
     # Use git ls-remote to get the ref
+    local output
+    local error
     local sha
-    sha=$(git ls-remote "$git_url" "$ref" 2>/dev/null | awk '{print $1}' | head -n 1)
+
+    output=$(git ls-remote "$git_url" "$ref" 2>&1)
+    local exit_code=$?
+
+    if [ $exit_code -ne 0 ]; then
+        error=$(echo "$output" | head -n 1)
+        log "Error: git ls-remote failed for $git_url (ref: $ref): $error"
+        return 1
+    fi
+
+    sha=$(echo "$output" | awk '{print $1}' | head -n 1)
 
     if [ -z "$sha" ]; then
-        log "Warning: Could not resolve ref '$ref' for $git_url"
+        log "Warning: Could not resolve ref '$ref' for $git_url (no matching ref found)"
         return 1
     fi
 

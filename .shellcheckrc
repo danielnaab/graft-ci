@@ -1,0 +1,12 @@
+# ShellCheck configuration for graft-ci scripts
+
+# Disable specific warnings
+
+# SC2034: Variable appears unused (we use vars for clarity even if not referenced)
+disable=SC2034
+
+# SC1091: Not following sourced files (we source optional configs)
+disable=SC1091
+
+# Enable all optional checks
+enable=all

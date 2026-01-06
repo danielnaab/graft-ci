@@ -24,28 +24,31 @@ The repository is being set up to implement the dependency update notification s
 
 ## Implementation Components
 
-### Planned Components
+### Implemented Components
 
-1. **Dependency Graph Builder** (src/graph-builder.sh)
-   - Scans organization repositories
-   - Parses graft.yaml files
+1. **Dependency Graph Builder** ([src/graph-builder.sh](../src/graph-builder.sh))
+   - Scans organization repositories with pagination
+   - Parses graft.yaml files using yq
    - Builds inverted index: upstream → consumers
    - Caches results for efficiency
 
-2. **Update Detector** (src/check-updates.sh)
+2. **Update Detector** ([src/check-updates.sh](../src/check-updates.sh))
    - Uses git ls-remote to check upstream refs
    - Compares with pinned refs in consumer graft.yaml
-   - Returns list of outdated dependencies
+   - Returns JSON list of outdated dependencies
+   - Includes upstream commit metadata
 
-3. **PR Creator** (src/create-pr.sh)
+3. **PR Creator** ([src/create-pr.sh](../src/create-pr.sh))
    - Updates graft.yaml with new refs
    - Creates pull request with context
    - Includes upstream commit information
+   - Idempotent (checks for existing PRs)
 
-4. **Forgejo Workflow** (.forgejo/workflows/dependency-update.yml)
+4. **Forgejo Workflow** ([.forgejo/workflows/dependency-update.yml](../.forgejo/workflows/dependency-update.yml))
    - Triggered by organization push events
    - Scheduled fallback (hourly)
    - Orchestrates graph building and update checking
+   - Supports manual trigger with dry run mode
 
 ## Write Boundaries
 
@@ -59,9 +62,9 @@ Never write to:
 - secrets/
 - .env files
 
-## References
+## Sources
 
-- [Dependency Update Specification](https://forgejo.example/daniel/graft-knowledge/src/branch/main/docs/specification/dependency-update-notification.md)
-- [Decision 0006: Event Strategy](https://forgejo.example/daniel/graft-knowledge/src/branch/main/docs/decisions/decision-0006-dependency-update-events.md)
-- [Human Entrypoint](README.md)
-- [Domain Configuration](../knowledge-base.yaml)
+- [graft-knowledge: Dependency Update Specification](https://forgejo.example/daniel/graft-knowledge/src/branch/main/docs/specification/dependency-update-notification.md) - Operational requirements and constraints
+- [graft-knowledge: Decision 0006 - Event Strategy](https://forgejo.example/daniel/graft-knowledge/src/branch/main/docs/decisions/decision-0006-dependency-update-events.md) - Event-driven approach rationale
+- [Human Entrypoint](README.md) - User-facing documentation
+- [Domain Configuration](../knowledge-base.yaml) - Knowledge base configuration

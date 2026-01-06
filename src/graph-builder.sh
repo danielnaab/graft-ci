@@ -28,14 +28,48 @@ log() {
     echo "[graph-builder] $*" >&2
 }
 
-# Fetch all repositories in organization
+# Fetch all repositories in organization with pagination
 fetch_repos() {
     local org="$1"
     log "Fetching repositories for organization: $org"
 
-    curl -s -H "Authorization: token $FORGEJO_TOKEN" \
-        "${FORGEJO_URL}/api/v1/orgs/${org}/repos?limit=100" \
-        | jq -r '.[].name'
+    local page=1
+    local limit=50
+    local all_repos=""
+
+    while true; do
+        local url="${FORGEJO_URL}/api/v1/orgs/${org}/repos?page=${page}&limit=${limit}"
+        local repos
+        repos=$(curl -s -H "Authorization: token $FORGEJO_TOKEN" "$url")
+
+        # Check for API errors
+        if echo "$repos" | jq -e '.message' >/dev/null 2>&1; then
+            local error_msg=$(echo "$repos" | jq -r '.message')
+            log "Error fetching repos (page $page): $error_msg"
+            return 1
+        fi
+
+        local count=$(echo "$repos" | jq 'length')
+
+        if [ "$count" -eq 0 ]; then
+            break
+        fi
+
+        log "  Fetched page $page: $count repositories"
+
+        # Append repo names
+        local names=$(echo "$repos" | jq -r '.[].name')
+        all_repos="${all_repos}${names}"$'\n'
+
+        # If we got fewer than limit, we're done
+        if [ "$count" -lt "$limit" ]; then
+            break
+        fi
+
+        page=$((page + 1))
+    done
+
+    echo "$all_repos" | grep -v '^$'
 }
 
 # Fetch graft.yaml from a repository
