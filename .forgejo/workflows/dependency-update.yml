@@ -126,33 +126,29 @@ jobs:
           echo "Total updates found:"
           cat updates.json | jq .
 
-      - name: Configure SSH
+      - name: Setup Coder CLI
+        if: ${{ !inputs.dry_run }}
         run: |
-          # Set up SSH for git operations
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-
-          # Add SSH key if provided
-          if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-            chmod 600 ~/.ssh/id_ed25519
+          # Install Coder CLI if not present
+          if ! command -v coder &>/dev/null; then
+            echo "Installing Coder CLI..."
+            curl -fsSL https://coder.com/install.sh | sh
           fi
 
-          # Add known hosts
-          ssh-keyscan -p 2222 platform-vm >> ~/.ssh/known_hosts 2>/dev/null || true
-          chmod 644 ~/.ssh/known_hosts
+          # Login to Coder
+          echo "Logging in to Coder..."
+          coder login http://192.168.1.51:7080 --token "${{ secrets.CODER_TOKEN }}"
 
-          # Configure git
-          git config --global user.name "graft-ci-bot"
-          git config --global user.email "graft-ci-bot@homelab.local"
+          # Verify login
+          coder list || echo "Warning: Could not list workspaces"
 
-      - name: Create pull requests
+      - name: Create workspaces and run upgrades
         if: ${{ !inputs.dry_run }}
         env:
           FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
-          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          CODER_URL: http://192.168.1.51:7080
         run: |
-          echo "Creating pull requests..."
+          echo "Processing updates via Coder workspaces..."
 
           UPDATE_COUNT=$(cat updates.json | jq 'length')
 
@@ -161,8 +157,8 @@ jobs:
             exit 0
           fi
 
-          # Create PRs
-          ./src/create-pr.sh updates.json > results.json
+          # Process each update through workspace
+          ./src/workspace-upgrade.sh updates.json > results.json
 
           echo "Results:"
           cat results.json | jq .
@@ -170,10 +166,12 @@ jobs:
       - name: Dry run summary
         if: inputs.dry_run
         run: |
-          echo "DRY RUN MODE - No PRs were created"
+          echo "DRY RUN MODE - No workspaces or PRs created"
           echo ""
-          echo "Updates that would be created:"
+          echo "Updates that would be processed via Coder workspaces:"
           cat updates.json | jq -r '.[] | "  - \(.consumer): \(.dep_name) (\(.old_sha[0:8]) → \(.new_sha[0:8]))"'
+          echo ""
+          echo "Each update would get its own workspace: {consumer}-deps-{dep_name}"
 
       - name: Upload artifacts
         if: always()
