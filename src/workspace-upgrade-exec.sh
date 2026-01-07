@@ -5,8 +5,9 @@ set -euo pipefail
 #
 # This script runs inside a Coder workspace to:
 # 1. Install graft if needed
-# 2. Run graft upgrade
-# 3. Create/update PR via Forgejo API
+# 2. Clone/update repository
+# 3. Run graft upgrade
+# 4. Create/update PR via Forgejo API
 #
 # Arguments:
 #   $1 - consumer repo name
@@ -14,20 +15,22 @@ set -euo pipefail
 #   $3 - new SHA
 #   $4 - old SHA
 #   $5 - git URL
-#   $6 - commit info JSON
 #
-# Environment variables (from workspace):
+# Environment variables (required):
 #   FORGEJO_TOKEN - Forgejo API token
 #   FORGEJO_URL - Forgejo instance URL
 #   GRAFT_ORG - Organization name
+#   CODER_URL - Coder instance URL
+#   COMMIT_INFO_JSON - Commit information as JSON
 #
 # Outputs JSON result on stdout
 
-# Configuration from environment or defaults
-FORGEJO_URL="${FORGEJO_URL:-http://platform-vm.local/git}"
+# Configuration from environment
+FORGEJO_URL="${FORGEJO_URL:-}"
 FORGEJO_TOKEN="${FORGEJO_TOKEN:-}"
-GRAFT_ORG="${GRAFT_ORG:-daniel}"
-CODER_URL="${CODER_URL:-http://192.168.1.51:7080}"
+GRAFT_ORG="${GRAFT_ORG:-}"
+CODER_URL="${CODER_URL:-}"
+COMMIT_INFO_JSON="${COMMIT_INFO_JSON:-{}}"
 
 # Arguments
 CONSUMER="${1:-}"
@@ -35,7 +38,6 @@ DEP_NAME="${2:-}"
 NEW_SHA="${3:-}"
 OLD_SHA="${4:-}"
 GIT_URL="${5:-}"
-COMMIT_INFO="${6:-{}}"
 
 # Logging
 log() {
@@ -46,10 +48,21 @@ error() {
     echo "[workspace-exec] ERROR: $*" >&2
 }
 
+# Validate required environment variables
+if [ -z "$FORGEJO_TOKEN" ]; then
+    error "FORGEJO_TOKEN environment variable is required"
+    exit 1
+fi
+
+if [ -z "$FORGEJO_URL" ] || [ -z "$GRAFT_ORG" ] || [ -z "$CODER_URL" ]; then
+    error "Required environment variables not set: FORGEJO_URL, GRAFT_ORG, CODER_URL"
+    exit 1
+fi
+
 # Validate arguments
 if [ -z "$CONSUMER" ] || [ -z "$DEP_NAME" ] || [ -z "$NEW_SHA" ]; then
     error "Missing required arguments"
-    error "Usage: $0 <consumer> <dep_name> <new_sha> <old_sha> <git_url> <commit_info_json>"
+    error "Usage: $0 <consumer> <dep_name> <new_sha> <old_sha> <git_url>"
     exit 1
 fi
 
@@ -85,6 +98,15 @@ install_graft() {
 # Run graft upgrade
 run_upgrade() {
     log "Running graft upgrade for $DEP_NAME to $NEW_SHA"
+
+    # Clone repository if it doesn't exist
+    if [ ! -d "$HOME/$CONSUMER" ]; then
+        log "Cloning consumer repository..."
+        git clone "ssh://forgejo@platform-vm:2222/$GRAFT_ORG/$CONSUMER.git" "$HOME/$CONSUMER" || {
+            error "Failed to clone repository: $GRAFT_ORG/$CONSUMER"
+            return 1
+        }
+    fi
 
     cd "$HOME/$CONSUMER" || {
         error "Consumer directory not found: $HOME/$CONSUMER"
@@ -127,6 +149,18 @@ create_or_update_pr() {
     # Create branch
     git checkout -b "$branch_name" 2>/dev/null || git checkout "$branch_name"
 
+    # Verify graft.lock exists and was modified
+    if [ ! -f graft.lock ]; then
+        error "graft.lock not found after upgrade"
+        return 1
+    fi
+
+    # Check if graft.lock has changes
+    if git diff --quiet graft.lock; then
+        log "No changes to graft.lock (already up to date)"
+        return 0
+    fi
+
     # Stage changes
     git add graft.lock
 
@@ -143,8 +177,8 @@ create_or_update_pr() {
 
     # Extract commit info
     local commit_message commit_author
-    commit_message=$(echo "$COMMIT_INFO" | jq -r '.message // "Update dependency"')
-    commit_author=$(echo "$COMMIT_INFO" | jq -r '.author.name // "Unknown"')
+    commit_message=$(echo "$COMMIT_INFO_JSON" | jq -r '.message // "Update dependency"')
+    commit_author=$(echo "$COMMIT_INFO_JSON" | jq -r '.author.name // "Unknown"')
 
     # Get current workspace name (from hostname or CODER_WORKSPACE env var)
     local workspace_name="${CODER_WORKSPACE:-${HOSTNAME:-unknown}}"

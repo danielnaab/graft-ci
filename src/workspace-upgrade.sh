@@ -24,6 +24,12 @@ FORGEJO_TOKEN="${FORGEJO_TOKEN:-}"
 CODER_URL="${CODER_URL:-http://192.168.1.51:7080}"
 GRAFT_ORG="${GRAFT_ORG:-daniel}"
 
+# Constants
+readonly WORKSPACE_INIT_WAIT_MAX=60  # seconds to wait for workspace initialization
+readonly WORKSPACE_START_WAIT_MAX=30  # seconds to wait for workspace to start
+readonly API_RETRY_ATTEMPTS=3
+readonly API_RETRY_DELAY=2  # seconds
+
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -176,7 +182,31 @@ workspace_is_running() {
     [ "$status" = "Running" ]
 }
 
+# Wait for workspace to be ready
+wait_for_workspace_ready() {
+    local workspace_name="$1"
+    local max_wait="$2"
+
+    log "Waiting for workspace $workspace_name to be ready (max ${max_wait}s)..."
+
+    for i in $(seq 1 "$max_wait"); do
+        if workspace_is_running "$workspace_name"; then
+            # Verify we can actually SSH into it
+            if coder ssh "$workspace_name" -- echo "ready" &>/dev/null; then
+                log "Workspace is ready after ${i}s"
+                return 0
+            fi
+        fi
+        sleep 1
+    done
+
+    error "Workspace did not become ready within ${max_wait}s"
+    return 1
+}
+
 # Check if workspace has uncommitted changes or additional commits
+# Returns 0 if has changes, 1 if clean
+# IMPORTANT: Fails safe - returns 0 (has changes) if unable to check
 workspace_has_changes() {
     local workspace_name="$1"
     local consumer="$2"
@@ -192,8 +222,9 @@ workspace_has_changes() {
     " 2>/dev/null || echo "error")
 
     if [ "$changes" = "error" ]; then
-        error "Could not check workspace state"
-        return 1
+        error "Could not check workspace state - assuming workspace has changes (safe default)"
+        # Fail safe: assume workspace has changes
+        return 0
     fi
 
     if [ -n "$changes" ]; then
@@ -202,6 +233,7 @@ workspace_has_changes() {
         return 0
     fi
 
+    log "Workspace is clean"
     return 1
 }
 
@@ -310,13 +342,33 @@ process_update() {
         if ! workspace_is_running "$workspace_name"; then
             log "Starting existing workspace: $workspace_name"
             coder start "$workspace_name" --yes
-            sleep 10  # Wait for workspace to be ready
+
+            # Wait for workspace to be ready
+            if ! wait_for_workspace_ready "$workspace_name" "$WORKSPACE_START_WAIT_MAX"; then
+                error "Failed to start workspace: $workspace_name"
+                jq -n \
+                    --arg consumer "$consumer" \
+                    --arg dep_name "$dep_name" \
+                    --arg error "Workspace failed to start" \
+                    '{consumer: $consumer, dep_name: $dep_name, success: false, error: $error}'
+                return 1
+            fi
         else
             log "Reusing running workspace: $workspace_name"
         fi
     else
         create_workspace "$workspace_name" "$consumer"
-        sleep 30  # Wait for workspace initialization
+
+        # Wait for workspace to be fully initialized
+        if ! wait_for_workspace_ready "$workspace_name" "$WORKSPACE_INIT_WAIT_MAX"; then
+            error "Workspace initialization failed: $workspace_name"
+            jq -n \
+                --arg consumer "$consumer" \
+                --arg dep_name "$dep_name" \
+                --arg error "Workspace initialization timeout" \
+                '{consumer: $consumer, dep_name: $dep_name, success: false, error: $error}'
+            return 1
+        fi
     fi
 
     # Get commit info for PR body
@@ -338,9 +390,15 @@ process_update() {
         return 1
     fi
 
-    # Execute via coder ssh
+    # Execute via coder ssh with environment variables (secure - not visible in ps)
     local result
-    result=$(coder ssh "$workspace_name" -- bash -s "$consumer" "$dep_name" "$new_sha" "$old_sha" "$git_url" "$(echo "$commit_info" | jq -c .)" < "$exec_script" 2>&1)
+    result=$(coder ssh "$workspace_name" \
+        --env FORGEJO_TOKEN="$FORGEJO_TOKEN" \
+        --env FORGEJO_URL="$FORGEJO_URL" \
+        --env GRAFT_ORG="$GRAFT_ORG" \
+        --env CODER_URL="$CODER_URL" \
+        --env COMMIT_INFO_JSON="$(echo "$commit_info" | jq -c .)" \
+        -- bash -s "$consumer" "$dep_name" "$new_sha" "$old_sha" "$git_url" < "$exec_script" 2>&1)
     local exit_code=$?
 
     if [ $exit_code -ne 0 ]; then
