@@ -1,0 +1,52 @@
+name: Dependency Update (Simple)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  FORGEJO_URL: http://platform-vm.local/git
+  GRAFT_ORG: daniel
+
+jobs:
+  dependency-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout graft-ci
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+          echo "Installed tools:"
+          yq --version
+          jq --version
+
+      - name: Make scripts executable
+        run: |
+          chmod +x src/*.sh
+
+      - name: Build dependency graph
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          echo "Building dependency graph..."
+          ./src/graph-builder.sh > graph.json
+
+          echo "Dependency graph:"
+          cat graph.json | jq .
+
+      - name: Test complete
+        run: |
+          echo "Workflow completed successfully!"
+          echo "Dry run mode: ${{ inputs.dry_run }}"
