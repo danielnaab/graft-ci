@@ -1,6 +1,11 @@
 name: Dependency Update Automation
 
 on:
+  # TEMPORARY: Push trigger to initialize workflow (remove after first run)
+  push:
+    branches:
+      - main
+
   # Webhook trigger for organization push events
   repository_dispatch:
     types: [org_push]
@@ -20,7 +25,7 @@ on:
         description: 'Dry run mode (no PRs created)'
         required: false
         type: boolean
-        default: false
+        default: true
 
 env:
   FORGEJO_URL: http://platform-vm.local/git
