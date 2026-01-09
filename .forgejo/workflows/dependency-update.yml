@@ -1,18 +1,13 @@
 name: Dependency Update Automation
 
 on:
-  # Push trigger for testing (can be removed after validation)
-  push:
-    branches:
-      - main
-
   # Webhook trigger for organization push events
   repository_dispatch:
     types: [org_push]
 
-  # Scheduled fallback (hourly)
+  # Scheduled fallback (weekly Monday 2am - reduces token usage)
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 2 * * 1'
 
   # Manual trigger for testing
   workflow_dispatch:
@@ -28,8 +23,9 @@ on:
         default: false
 
 env:
-  FORGEJO_URL: ${{ vars.FORGEJO_URL || 'http://platform-vm.local/git' }}
-  GRAFT_ORG: ${{ vars.GRAFT_ORG || 'daniel' }}
+  FORGEJO_URL: http://platform-vm.local/git
+  GRAFT_ORG: daniel
+  CODER_URL: http://192.168.1.51:7080
 
 jobs:
   dependency-update:
@@ -128,6 +124,8 @@ jobs:
 
       - name: Setup Coder CLI
         if: ${{ !inputs.dry_run }}
+        env:
+          CODER_SESSION_TOKEN: ${{ secrets.CODER_TOKEN }}
         run: |
           # Install Coder CLI if not present
           if ! command -v coder &>/dev/null; then
@@ -135,18 +133,24 @@ jobs:
             curl -fsSL https://coder.com/install.sh | sh
           fi
 
-          # Login to Coder
-          echo "Logging in to Coder..."
-          coder login http://192.168.1.51:7080 --token "${{ secrets.CODER_TOKEN }}"
+          # Verify token is valid
+          echo "Verifying Coder authentication..."
+          if ! coder list &>/dev/null; then
+            echo "::error::CODER_TOKEN expired or invalid!"
+            echo "::error::Please generate a new token (max 168h) and update the secret:"
+            echo "::error::  coder tokens create --name forgejo-actions --lifetime 168h"
+            echo "::error::  Then update at: http://platform-vm/git/daniel/graft-ci/settings/secrets"
+            exit 1
+          fi
 
-          # Verify login
-          coder list || echo "Warning: Could not list workspaces"
+          echo "✓ Coder authentication successful"
+          coder list
 
       - name: Create workspaces and run upgrades
         if: ${{ !inputs.dry_run }}
         env:
           FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
-          CODER_URL: http://192.168.1.51:7080
+          CODER_SESSION_TOKEN: ${{ secrets.CODER_TOKEN }}
         run: |
           echo "Processing updates via Coder workspaces..."
 
