@@ -9,9 +9,11 @@ on:
   schedule:
     - cron: '0 2 * * 1'
   workflow_dispatch:
-    inputs:
-      test_input:
-        description: 'Test'
+
+env:
+  FORGEJO_URL: http://platform-vm.local/git
+  GRAFT_ORG: daniel
+  CODER_URL: http://192.168.1.51:7080
 
 jobs:
   test:
