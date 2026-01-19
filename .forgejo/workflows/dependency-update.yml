@@ -13,7 +13,6 @@ on:
       upstream_repo:
         description: 'Upstream repository that was updated'
         required: false
-        type: string
 
 jobs:
   test:
