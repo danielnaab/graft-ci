@@ -6,6 +6,8 @@ on:
       - main
   repository_dispatch:
     types: [org_push]
+  schedule:
+    - cron: '0 2 * * 1'
   workflow_dispatch:
 
 jobs:
