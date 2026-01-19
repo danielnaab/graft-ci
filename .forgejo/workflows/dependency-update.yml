@@ -19,5 +19,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout graft-ci
+        uses: actions/checkout@v4
+
       - name: Hello
         run: echo "Workflow triggered successfully"
