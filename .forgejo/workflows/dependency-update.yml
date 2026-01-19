@@ -9,10 +9,6 @@ on:
   schedule:
     - cron: '0 2 * * 1'
   workflow_dispatch:
-    inputs:
-      upstream_repo:
-        description: 'Upstream repository that was updated'
-        required: false
 
 jobs:
   test:
