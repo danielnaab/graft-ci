@@ -16,7 +16,7 @@ env:
   CODER_URL: http://192.168.1.51:7080
 
 jobs:
-  test:
+  dependency-update:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout graft-ci
@@ -35,5 +35,123 @@ jobs:
           git --version
           curl --version
 
-      - name: Hello
-        run: echo "Workflow triggered successfully"
+      - name: Make scripts executable
+        run: |
+          chmod +x src/*.sh
+
+      - name: Build dependency graph
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          echo "Building dependency graph..."
+          ./src/graph-builder.sh > graph.json
+
+          echo "Dependency graph:"
+          cat graph.json | jq .
+
+      - name: Determine upstream repository
+        id: upstream
+        run: |
+          # For repository_dispatch events
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            UPSTREAM_REPO="${{ github.event.client_payload.repository }}"
+            echo "upstream_repo=$UPSTREAM_REPO" >> $GITHUB_OUTPUT
+            echo "Triggered by repository_dispatch: $UPSTREAM_REPO"
+          else
+            echo "upstream_repo=" >> $GITHUB_OUTPUT
+            echo "Scheduled/manual run - checking all repositories"
+          fi
+
+      - name: Check for updates (specific upstream)
+        if: steps.upstream.outputs.upstream_repo != ''
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          UPSTREAM_REPO="${{ steps.upstream.outputs.upstream_repo }}"
+          echo "Checking updates for: $UPSTREAM_REPO"
+
+          ./src/check-updates.sh "$UPSTREAM_REPO" graph.json > updates.json
+
+          echo "Updates found:"
+          cat updates.json | jq .
+
+      - name: Check for updates (all repositories)
+        if: steps.upstream.outputs.upstream_repo == ''
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          echo "Checking all repositories for updates..."
+
+          # Get all upstream repositories from the graph
+          UPSTREAMS=$(cat graph.json | jq -r 'keys[]')
+
+          # Initialize empty updates array
+          echo "[]" > updates.json
+
+          # Check each upstream
+          for upstream in $UPSTREAMS; do
+            echo "Checking $upstream..."
+
+            if ./src/check-updates.sh "$upstream" graph.json > upstream-updates.json 2>/dev/null; then
+              # Merge updates
+              MERGED=$(jq -s '.[0] + .[1]' updates.json upstream-updates.json)
+              echo "$MERGED" > updates.json
+            fi
+          done
+
+          echo "Total updates found:"
+          cat updates.json | jq .
+
+      - name: Setup Coder CLI
+        env:
+          CODER_SESSION_TOKEN: ${{ secrets.CODER_TOKEN }}
+        run: |
+          # Install Coder CLI if not present
+          if ! command -v coder &>/dev/null; then
+            echo "Installing Coder CLI..."
+            curl -fsSL https://coder.com/install.sh | sh
+          fi
+
+          # Verify token is valid
+          echo "Verifying Coder authentication..."
+          if ! coder list &>/dev/null; then
+            echo "::error::CODER_TOKEN expired or invalid!"
+            echo "::error::Please generate a new token (max 168h) and update the secret:"
+            echo "::error::  coder tokens create --name forgejo-actions --lifetime 168h"
+            echo "::error::  Then update at: http://platform-vm/git/daniel/graft-ci/settings/secrets"
+            exit 1
+          fi
+
+          echo "Coder authentication successful"
+          coder list
+
+      - name: Create workspaces and run upgrades
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          CODER_SESSION_TOKEN: ${{ secrets.CODER_TOKEN }}
+        run: |
+          echo "Processing updates via Coder workspaces..."
+
+          UPDATE_COUNT=$(cat updates.json | jq 'length')
+
+          if [ "$UPDATE_COUNT" -eq 0 ]; then
+            echo "No updates to process"
+            exit 0
+          fi
+
+          # Process each update through workspace
+          ./src/workspace-upgrade.sh updates.json > results.json
+
+          echo "Results:"
+          cat results.json | jq .
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-update-results
+          path: |
+            graph.json
+            updates.json
+            results.json
+          retention-days: 30
