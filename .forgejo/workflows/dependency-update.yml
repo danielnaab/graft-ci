@@ -14,11 +14,6 @@ on:
         description: 'Upstream repository that was updated'
         required: false
         type: string
-      dry_run:
-        description: 'Dry run mode (no PRs created)'
-        required: false
-        type: boolean
-        default: true
 
 jobs:
   test:
