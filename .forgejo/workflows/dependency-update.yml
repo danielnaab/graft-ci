@@ -22,5 +22,18 @@ jobs:
       - name: Checkout graft-ci
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: |
+          # Install yq for YAML parsing
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+          # Verify installations
+          echo "Installed tools:"
+          yq --version
+          jq --version
+          git --version
+          curl --version
+
       - name: Hello
         run: echo "Workflow triggered successfully"
