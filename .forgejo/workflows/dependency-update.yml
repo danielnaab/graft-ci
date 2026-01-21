@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  FORGEJO_URL: http://platform-vm/git
+  FORGEJO_URL: http://192.168.1.51/git
   GRAFT_ORG: daniel
   CODER_URL: http://192.168.1.51:7080
 
