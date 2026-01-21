@@ -22,7 +22,8 @@ jobs:
       - name: Checkout graft-ci
         uses: actions/checkout@v4
         with:
-          github-server-url: ${{ env.FORGEJO_URL }}
+          github-server-url: http://platform-vm
+          repository: git/daniel/graft-ci
 
       - name: Install dependencies
         run: |
