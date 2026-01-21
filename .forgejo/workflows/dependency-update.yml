@@ -20,10 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout graft-ci
-        uses: actions/checkout@v4
-        with:
-          github-server-url: http://platform-vm
-          repository: git/daniel/graft-ci
+        run: |
+          git clone --depth 1 "${{ env.FORGEJO_URL }}/${{ env.GRAFT_ORG }}/graft-ci.git" .
+          git log --oneline -1
 
       - name: Install dependencies
         run: |
