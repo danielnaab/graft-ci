@@ -20,8 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout graft-ci
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
         run: |
-          git clone --depth 1 "${{ env.FORGEJO_URL }}/${{ env.GRAFT_ORG }}/graft-ci.git" .
+          git clone --depth 1 "http://${FORGEJO_TOKEN}@192.168.1.51/git/${{ env.GRAFT_ORG }}/graft-ci.git" .
           git log --oneline -1
 
       - name: Install dependencies
