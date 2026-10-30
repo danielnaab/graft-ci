@@ -49,7 +49,7 @@ Complete deployment checklist for graft-ci automation.
 - [ ] Secret added to repository
 - [ ] Token tested with API call
 
-**Current token**: `766f3e650b14bca1063b0ddf3a16740634121905`
+**Current token**: stored only as this repo's `FORGEJO_TOKEN` Actions secret
 - ✓ Has read scopes
 - ? Unknown if has write scope for PRs
 - **Action**: Test in workflow or generate new token with confirmed write access

@@ -34,20 +34,20 @@ Initial validation testing of graft-ci implementation.
 
 **Objective**: Validate API token access
 
-**Token tested**: `0efa3c5e51f116b5937a19b339f1e69fcc8cfbce`
+**Token tested**: `<redacted>`
 
 **Test commands**:
 ```bash
 # Test user endpoint
-curl -H "Authorization: token 0efa3c5e51f116b5937a19b339f1e69fcc8cfbce" \
+curl -H "Authorization: token <redacted>" \
   "http://platform-vm:9001/api/v1/user"
 
 # Test organization repos
-curl -H "Authorization: token 0efa3c5e51f116b5937a19b339f1e69fcc8cfbce" \
+curl -H "Authorization: token <redacted>" \
   "http://platform-vm:9001/api/v1/orgs/daniel/repos?limit=5"
 
 # Test user repos
-curl -H "Authorization: token 0efa3c5e51f116b5937a19b339f1e69fcc8cfbce" \
+curl -H "Authorization: token <redacted>" \
   "http://platform-vm:9001/api/v1/users/daniel/repos?limit=5"
 ```
 
@@ -109,7 +109,7 @@ Created manual test graph:
 ```bash
 export FORGEJO_URL="http://platform-vm:9001"
 export GRAFT_ORG="daniel"
-export FORGEJO_TOKEN="0efa3c5e51f116b5937a19b339f1e69fcc8cfbce"
+export FORGEJO_TOKEN="<redacted>"
 
 ./src/check-updates.sh graft-knowledge test-graph.json
 ```
@@ -145,7 +145,7 @@ Script executed correctly:
 ```bash
 export FORGEJO_URL="http://platform-vm:9001"
 export GRAFT_ORG="daniel"
-export FORGEJO_TOKEN="0efa3c5e51f116b5937a19b339f1e69fcc8cfbce"
+export FORGEJO_TOKEN="<redacted>"
 
 ./src/graph-builder.sh
 ```

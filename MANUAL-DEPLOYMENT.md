@@ -22,7 +22,7 @@ Quick manual deployment guide since API automation is limited in this Forgejo ve
 3. **Add new secret**:
    - Click "Add Secret" button
    - Name: `FORGEJO_TOKEN`
-   - Value: `766f3e650b14bca1063b0ddf3a16740634121905`
+   - Value: `<your-forgejo-token>`
    - Click "Add Secret"
 
 **✓ Secret configured!**
@@ -126,7 +126,7 @@ Run the deployment helper script:
 
 ```bash
 cd /home/coder/graft-ci
-export FORGEJO_TOKEN="766f3e650b14bca1063b0ddf3a16740634121905"
+export FORGEJO_TOKEN="<your-forgejo-token>"
 ./deploy.sh
 ```
 

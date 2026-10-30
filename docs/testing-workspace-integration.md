@@ -17,7 +17,7 @@ This guide explains how to test the workspace-based dependency update automation
 
 2. **Environment variables** configured:
    ```bash
-   export FORGEJO_TOKEN="766f3e650b14bca1063b0ddf3a16740634121905"
+   export FORGEJO_TOKEN="<your-forgejo-token>"
    export FORGEJO_URL="http://platform-vm.local/git"
    export CODER_URL="http://192.168.1.51:7080"
    export GRAFT_ORG="daniel"
@@ -345,7 +345,7 @@ coder login http://192.168.1.51:7080
 
 Export the token:
 ```bash
-export FORGEJO_TOKEN="766f3e650b14bca1063b0ddf3a16740634121905"
+export FORGEJO_TOKEN="<your-forgejo-token>"
 ```
 
 ### Workspace creation hangs

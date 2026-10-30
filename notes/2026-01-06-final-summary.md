@@ -144,7 +144,7 @@ Complete implementation and testing of graft-ci automated dependency update syst
 ### ⚠️ Known Limitations
 
 **Token Scope**:
-- Current token: `766f3e650b14bca1063b0ddf3a16740634121905`
+- Current token: `<redacted: rotated 2026-10-30>`
 - Has: `read:user`, `read:org`, `repo` (read)
 - Unknown: `repo` (write) for PR creation
 - Missing: `write:user` for repo creation

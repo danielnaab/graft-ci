@@ -81,7 +81,7 @@ Unfortunately, Forgejo Actions API endpoints are not available in this version, 
 
 1. Click "Add Secret"
 2. Name: `FORGEJO_TOKEN`
-3. Value: `766f3e650b14bca1063b0ddf3a16740634121905`
+3. Value: `<your-forgejo-token>`
 4. Click "Add Secret"
 
 #### Step 2: Run Dry Run Test (3 minutes)
@@ -148,7 +148,7 @@ Interactive deployment helper:
 
 ```bash
 cd /home/coder/graft-ci
-export FORGEJO_TOKEN="766f3e650b14bca1063b0ddf3a16740634121905"
+export FORGEJO_TOKEN="<your-forgejo-token>"
 ./deploy.sh
 ```
 
