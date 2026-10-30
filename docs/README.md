@@ -1,3 +1,8 @@
+---
+title: "graft-ci"
+status: working
+---
+
 # graft-ci
 
 Central CI/CD service for Graft dependency automation.

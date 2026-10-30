@@ -1,3 +1,8 @@
+---
+title: "Testing Workspace Integration Locally"
+status: working
+---
+
 # Testing Workspace Integration Locally
 
 This guide explains how to test the workspace-based dependency update automation locally, independent of Forgejo Actions.
