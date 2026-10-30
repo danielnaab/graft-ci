@@ -1,3 +1,8 @@
+---
+title: "Architecture Decisions"
+status: working
+---
+
 # Architecture Decisions
 
 This directory contains Architecture Decision Records (ADRs) for graft-ci.

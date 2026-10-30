@@ -1,7 +1,7 @@
 ---
 title: "Shell Script Implementation"
 date: 2026-01-06
-status: accepted
+status: stable
 ---
 
 # Decision 0001: Shell Script Implementation
