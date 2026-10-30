@@ -19,7 +19,7 @@ Cannot create test repositories via API due to insufficient token scope.
 
 ## Current Token Scopes
 
-The token `766f3e650b14bca1063b0ddf3a16740634121905` has:
+The token `<redacted: rotated 2026-10-30>` has:
 - ✓ `read:user` - Can read user information
 - ✓ `read:org` - Can read organization data
 - ✓ `repo` (read access) - Can fetch repository contents

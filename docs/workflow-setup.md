@@ -42,7 +42,7 @@ Configure these secrets in the graft-ci repository settings:
 4. Value: `<paste-token-here>`
 5. Save
 
-**Current Token**: `766f3e650b14bca1063b0ddf3a16740634121905`
+**Current Token**: stored only as this repo's `FORGEJO_TOKEN` Actions secret
 - ✓ Has required read scopes
 - ? Unknown if has PR creation write scope
 - Test by running workflow

@@ -14,7 +14,7 @@ Fast track to get graft-ci running in 10 minutes.
    - Name: `FORGEJO_TOKEN`
    - Value: `<paste-token>`
 
-**Current working token**: `766f3e650b14bca1063b0ddf3a16740634121905`
+**Current working token**: stored only as this repo's `FORGEJO_TOKEN` Actions secret
 
 ### Optional: SSH_PRIVATE_KEY
 
